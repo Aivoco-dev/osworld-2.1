@@ -1,6 +1,6 @@
 # OSWorld 2.1 Offline
 
-**82 tasks · OpenCode 1.19.5 · Vision Large with continual learning**
+**82 tasks · OpenCode 1.19.5 · Vision Large · optional continual learning**
 
 ## Start
 
@@ -15,7 +15,19 @@
 ./start --task 001      # Run a single desktop task
 ```
 
-OpenCode sees screenshots and selects actions. OSWorld executes the actions and runs the official evaluator. Each task starts with an empty OpenCode session and fresh Vision memory.
+OpenCode sees screenshots and selects actions. OSWorld executes the actions and runs the official evaluator. Each task starts with a fresh OpenCode session. With continual learning enabled, Vision starts each task with empty learning weights.
+
+## Continual learning
+
+Set `CONTINUAL_LEARNING=on` or `CONTINUAL_LEARNING=off` in this repo’s `.env` for one-click runs. The default is on. You can override it for a single run:
+
+```sh
+./start --continual-learning
+./start --no-continual-learning
+./start --plan --no-continual-learning
+```
+
+Both modes use the same tasks, harness, and conversation history within each task. Turning continual learning off skips the additional learning call and the use of learning weights. `run.json` records the selected mode.
 
 ## Results
 

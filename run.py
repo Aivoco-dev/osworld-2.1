@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 from bootstrap import REPO, ensure_env, require_tools, checkout, result_directory
-from cl_adapter import load_key, read_env
+from cl_adapter import load_key, read_env, add_continual_learning_argument, resolve_continual_learning
 from opencode_driver import OPENCODE_VERSION, prepare_opencode
 
 URL = "https://github.com/xlang-ai/OSWorld-V2"
@@ -16,13 +16,18 @@ RELEASE = "osworld-v2.1"
 
 def main():
     settings = read_env(REPO)
-    parser = argparse.ArgumentParser(description="OSWorld 2.1 offline with OpenCode and Vision continual learning")
+    parser = argparse.ArgumentParser(description="OSWorld 2.1 offline with OpenCode and Vision")
     parser.add_argument("--workers", type=int, default=settings.get("BENCH_WORKERS") or "1")
     parser.add_argument("--provider", choices=["docker", "aws"], default=settings.get("OSWORLD_PROVIDER") or "docker")
     parser.add_argument("--task", action="append")
     parser.add_argument("--prepare", action="store_true", help="Download versioned gated tasks and assets")
     parser.add_argument("--plan", action="store_true", help="Show the selected task list without inference")
+    add_continual_learning_argument(parser)
     args = parser.parse_args()
+    try:
+        continual_learning = resolve_continual_learning(args.continual_learning, settings)
+    except ValueError as error:
+        parser.error(str(error))
     tasks = json.loads((REPO / "tasks.json").read_text())["tasks"]
     if len(set(tasks)) != 82:
         raise RuntimeError("Expected the 82-task OSWorld offline manifest")
@@ -33,8 +38,8 @@ def main():
         parser.error("OSWORLD_PROVIDER must be docker or aws")
     if args.plan:
         print(json.dumps({
-            "release": RELEASE, "harness": "OpenCode + Vision CL", "split": "offline",
-            "provider": args.provider, "workers": args.workers, "task_count": len(selected),
+            "release": RELEASE, "harness": "OpenCode + Vision", "split": "offline",
+            "provider": args.provider, "workers": args.workers, "continual_learning": continual_learning, "task_count": len(selected),
             "tasks": selected,
         }, indent=2))
         return 0
@@ -68,10 +73,11 @@ def main():
     env["OSWORLD_FILE_BASE_URL"] = str(assets)
     env["VISION_OPENCODE_BIN"] = str(prepare_opencode(REPO))
     output = result_directory(
-        benchmark="OSWorld", harness="OpenCode + Vision CL",
-        release=RELEASE, tasks=selected, workers=args.workers, split="offline",
+        benchmark="OSWorld", harness="OpenCode + Vision",
+        release=RELEASE, tasks=selected, workers=args.workers, continual_learning=continual_learning, split="offline",
         revision=REVISION, provider=args.provider, opencode_version=OPENCODE_VERSION, max_steps=500,
     )
+    env["VISION_CONTINUAL_LEARNING"] = "on" if continual_learning else "off"
     env["VISION_OSWORLD_USAGE_DIR"] = str(output / "vision-usage")
     task_map = output / "tasks.json"
     task_map.write_text(json.dumps({"offline": selected}, indent=2))

@@ -11,7 +11,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from bootstrap import REPO
-from cl_adapter import bridge, load_key
+from cl_adapter import bridge, load_key, parse_continual_learning
 from opencode_driver import OpenCode
 
 sys.path.insert(0, str(Path.cwd() / "scripts" / "python"))
@@ -86,7 +86,8 @@ class OpenCodeDesktopAgent:
 
     def _start_task(self):
         profile = tempfile.TemporaryDirectory(prefix="vision-osworld-")
-        adapter = bridge(load_key(REPO), limit=500)
+        continual_learning = parse_continual_learning(os.environ.get("VISION_CONTINUAL_LEARNING", "on"))
+        adapter = bridge(load_key(REPO), limit=500, continual_learning=continual_learning)
         url, token, vision = adapter.__enter__()
         try:
             self.cli = OpenCode(Path(profile.name), url, token)
